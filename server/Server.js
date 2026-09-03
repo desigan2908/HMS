@@ -17,8 +17,15 @@ app.use(express.json());
 
 // Routes
 const authRoutes = require("./routes/authRoutes");
+const studentRoutes = require("./routes/studentRoutes");
+const complaintRoutes = require("./routes/complaintRoutes");
+const dashboardRoutes = require("./routes/dashboardRoutes");
 
+// API Routes
 app.use("/api/auth", authRoutes);
+app.use("/api/students", studentRoutes);
+app.use("/api/complaints", complaintRoutes);
+app.use("/api/dashboard", dashboardRoutes);
 
 // Test route
 app.get("/", (req, res) => {

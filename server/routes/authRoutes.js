@@ -5,10 +5,18 @@ const {
   loginUser
 } = require("../controllers/authController");
 
+const adminMiddleware = require("../middleware/adminMiddleware");
+
 const router = express.Router();
 
-router.post("/register", registerUser);
+// Admin creates another user/admin account
+router.post(
+  "/register",
+  adminMiddleware,
+  registerUser
+);
 
+// Login
 router.post("/login", loginUser);
 
 module.exports = router;
