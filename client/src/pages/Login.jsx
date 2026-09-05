@@ -10,6 +10,7 @@ import {
 } from "react-icons/fa";
 
 import "../styles/Login.css";
+import { loginUser } from "../api/auth";
 
 function Login() {
   const navigate = useNavigate();
@@ -21,46 +22,112 @@ function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const handleLogin = (e) => {
+  const handleRoleChange = (newRole) => {
+    setRole(newRole);
+    setPassword("");
+  };
+
+  const handleLogin = async (e) => {
     e.preventDefault();
+
+    if (loading) return;
+
+    // ==========================================
+    // VALIDATION
+    // ==========================================
+    if (role === "student") {
+      if (!studentId.trim() || !password) {
+        alert("Please enter Student ID and Password");
+        return;
+      }
+    } else {
+      if (!adminId.trim() || !password) {
+        alert("Please enter Admin Email and Password");
+        return;
+      }
+    }
 
     setLoading(true);
 
-    setTimeout(() => {
+    try {
+      // ==========================================
+      // STUDENT LOGIN
+      // ==========================================
       if (role === "student") {
-        if (!studentId || !password) {
-          alert("Please enter Student ID and Password");
-          setLoading(false);
-          return;
+        const response = await loginUser({
+          username: studentId.trim(),
+          password,
+        });
+
+        if (!response?.token) {
+          throw new Error("Student login failed");
         }
 
-        navigate("/student-dashboard");
-      } else {
-        if (!adminId || !password) {
-          alert("Please enter Admin ID and Password");
-          setLoading(false);
-          return;
+        // Save authentication details
+        localStorage.setItem("token", response.token);
+        localStorage.setItem("role", "student");
+
+        if (response.student) {
+          localStorage.setItem(
+            "student",
+            JSON.stringify(response.student)
+          );
         }
 
-        navigate("/admin-dashboard");
+        // Go to student dashboard
+        navigate("/student-dashboard", { replace: true });
       }
 
+      // ==========================================
+      // ADMIN LOGIN
+      // ==========================================
+      else {
+        const response = await loginUser({
+          email: adminId.trim(),
+          password,
+        });
+
+        if (!response?.token) {
+          throw new Error("Admin login failed");
+        }
+
+        // Save authentication details
+        localStorage.setItem("token", response.token);
+        localStorage.setItem("role", "admin");
+
+        if (response.user) {
+          localStorage.setItem(
+            "user",
+            JSON.stringify(response.user)
+          );
+        }
+
+        // Go to admin dashboard
+        navigate("/admin-dashboard", { replace: true });
+      }
+    } catch (error) {
+      console.error("Login error:", error);
+
+      const message =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Login failed. Please try again.";
+
+      alert(message);
+    } finally {
       setLoading(false);
-    }, 800);
+    }
   };
 
   return (
     <div className="login-page">
-
-      {/* LEFT SIDE */}
+      {/* ==========================================
+          LEFT SIDE
+      ========================================== */}
       <div className="login-banner">
-
         <div className="overlay"></div>
 
         <div className="banner-content">
-
-          {/* Removed H Icon and HostelHub Logo */}
-
           <div className="welcome-section">
             <h1>
               Smart Hostel
@@ -75,7 +142,6 @@ function Login() {
           </div>
 
           <div className="features">
-
             <div className="feature-item">
               <span>✓</span>
               Secure Authentication
@@ -90,35 +156,32 @@ function Login() {
               <span>✓</span>
               Admin Control Panel
             </div>
-
           </div>
-
         </div>
-
       </div>
 
-
-      {/* RIGHT SIDE LOGIN */}
+      {/* ==========================================
+          RIGHT SIDE
+      ========================================== */}
       <div className="login-container">
-
         <div className="login-box">
-
+          {/* HEADER */}
           <div className="login-header">
             <h2>Welcome Back</h2>
             <p>Please login to access your account</p>
           </div>
 
-
-          {/* ROLE SELECTOR */}
-
+          {/* ==========================================
+              ROLE SELECTOR
+          ========================================== */}
           <div className="role-selector">
-
             <button
               type="button"
               className={`role-btn ${
                 role === "student" ? "active" : ""
               }`}
-              onClick={() => setRole("student")}
+              onClick={() => handleRoleChange("student")}
+              disabled={loading}
             >
               <FaUserGraduate />
 
@@ -128,13 +191,13 @@ function Login() {
               </div>
             </button>
 
-
             <button
               type="button"
               className={`role-btn ${
                 role === "admin" ? "active" : ""
               }`}
-              onClick={() => setRole("admin")}
+              onClick={() => handleRoleChange("admin")}
+              disabled={loading}
             >
               <FaUserShield />
 
@@ -143,24 +206,18 @@ function Login() {
                 <small>Administrator Login</small>
               </div>
             </button>
-
           </div>
 
-
-          {/* LOGIN FORM */}
-
+          {/* ==========================================
+              LOGIN FORM
+          ========================================== */}
           <form onSubmit={handleLogin}>
-
-            {/* STUDENT LOGIN */}
-
+            {/* STUDENT */}
             {role === "student" ? (
-
               <div className="input-group">
-
                 <label>Student ID</label>
 
                 <div className="input-wrapper">
-
                   <FaUserGraduate className="input-icon" />
 
                   <input
@@ -170,48 +227,38 @@ function Login() {
                     onChange={(e) =>
                       setStudentId(e.target.value)
                     }
+                    disabled={loading}
+                    autoComplete="username"
                   />
-
                 </div>
-
               </div>
-
             ) : (
-
-              /* ADMIN LOGIN */
-
+              /* ADMIN */
               <div className="input-group">
-
-                <label>Admin ID</label>
+                <label>Admin Email</label>
 
                 <div className="input-wrapper">
-
                   <FaUserShield className="input-icon" />
 
                   <input
-                    type="text"
-                    placeholder="Enter your Admin ID"
+                    type="email"
+                    placeholder="Enter your admin email"
                     value={adminId}
                     onChange={(e) =>
                       setAdminId(e.target.value)
                     }
+                    disabled={loading}
+                    autoComplete="username"
                   />
-
                 </div>
-
               </div>
-
             )}
 
-
             {/* PASSWORD */}
-
             <div className="input-group">
-
               <label>Password</label>
 
               <div className="input-wrapper">
-
                 <FaLock className="input-icon" />
 
                 <input
@@ -221,6 +268,8 @@ function Login() {
                   onChange={(e) =>
                     setPassword(e.target.value)
                   }
+                  disabled={loading}
+                  autoComplete="current-password"
                 />
 
                 <button
@@ -229,44 +278,36 @@ function Login() {
                   onClick={() =>
                     setShowPassword(!showPassword)
                   }
+                  disabled={loading}
+                  aria-label={
+                    showPassword
+                      ? "Hide password"
+                      : "Show password"
+                  }
                 >
-
                   {showPassword ? (
                     <FaEyeSlash />
                   ) : (
                     <FaEye />
                   )}
-
                 </button>
-
               </div>
-
             </div>
 
-
-            {/* REMEMBER ME ONLY */}
-
+            {/* REMEMBER ME */}
             <div className="login-options">
-
               <label className="remember">
-
                 <input type="checkbox" />
-
                 Remember me
-
               </label>
-
             </div>
-
 
             {/* LOGIN BUTTON */}
-
             <button
               type="submit"
               className="login-btn"
               disabled={loading}
             >
-
               <FaSignInAlt />
 
               {loading
@@ -275,22 +316,16 @@ function Login() {
                     role === "student"
                       ? "Student"
                       : "Admin"
-                  }`
-              }
-
+                  }`}
             </button>
-
           </form>
 
-
+          {/* SECURITY */}
           <div className="security-note">
             🔒 Your account is protected with secure authentication
           </div>
-
         </div>
-
       </div>
-
     </div>
   );
 }

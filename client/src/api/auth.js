@@ -2,11 +2,17 @@ import axios from "axios";
 
 const API_URL = "http://localhost:5000/api/auth";
 
-// Register user
-export const registerUser = async (userData) => {
+// Register user (Admin creates another admin)
+export const registerUser = async (userData, token) => {
   const response = await axios.post(
     `${API_URL}/register`,
-    userData
+    userData,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    }
   );
 
   return response.data;

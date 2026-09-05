@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
 
 import {
   FaHome,
@@ -12,112 +13,169 @@ import {
   FaEdit,
   FaTrash,
   FaCheckCircle,
-  FaClock,
-  FaUserGraduate,
   FaTimes,
+  FaExchangeAlt,
 } from "react-icons/fa";
 
 import "../styles/AdminDashboard.css";
 
+// ======================================================
+// API
+// ======================================================
+
+const API_BASE_URL = "http://localhost:5000/api";
+
+const api = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    "Content-Type": "application/json",
+  },
+});
+
+// Automatically attach admin JWT
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem("token");
+
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+// ======================================================
+// EMPTY FORM OBJECTS
+// ======================================================
+
+const emptyStudent = {
+  username: "",
+  password: "",
+  name: "",
+  rollNo: "",
+  bedNumber: "",
+  course: "",
+  email: "",
+  phone: "",
+  status: "Active",
+};
+
+const emptyRoom = {
+  roomNumber: "",
+  floor: 0,
+  capacity: 1,
+  totalBeds: 1,
+  status: "Available",
+  description: "",
+};
+
+const emptyAllocation = {
+  studentId: "",
+  roomId: "",
+  bedNumber: "",
+  allocationDate: "",
+  remarks: "",
+};
+
+const emptyFee = {
+  studentId: "",
+  amount: "",
+  dueDate: "",
+  status: "Pending",
+  description: "",
+};
+
+const emptyComplaint = {
+  status: "Pending",
+  adminReply: "",
+};
+
+// ======================================================
+// COMPONENT
+// ======================================================
+
 function AdminDashboard() {
   const navigate = useNavigate();
 
+  // ====================================================
+  // PAGE
+  // ====================================================
+
   const [activePage, setActivePage] = useState("dashboard");
+
+  // ====================================================
+  // DATA
+  // ====================================================
+
+  const [students, setStudents] = useState([]);
+  const [rooms, setRooms] = useState([]);
+  const [allocations, setAllocations] = useState([]);
+  const [complaints, setComplaints] = useState([]);
+  const [fees, setFees] = useState([]);
+
+  // ====================================================
+  // DASHBOARD STATS
+  // ====================================================
+
+  const [dashboardStats, setDashboardStats] = useState(null);
+
+  // ====================================================
+  // LOADING
+  // ====================================================
+
+  const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState(false);
+
+  // ====================================================
+  // FLASH
+  // ====================================================
 
   const [flashMessage, setFlashMessage] = useState("");
   const [showFlash, setShowFlash] = useState(false);
 
-  /* ================= MODAL STATES ================= */
+  // ====================================================
+  // MODALS
+  // ====================================================
 
+  const [showStudentModal, setShowStudentModal] = useState(false);
   const [showRoomModal, setShowRoomModal] = useState(false);
+  const [showAllocationModal, setShowAllocationModal] = useState(false);
   const [showFeeModal, setShowFeeModal] = useState(false);
   const [showComplaintModal, setShowComplaintModal] = useState(false);
 
+  // ====================================================
+  // SELECTED RECORDS
+  // ====================================================
+
+  const [selectedStudent, setSelectedStudent] = useState(null);
   const [selectedRoom, setSelectedRoom] = useState(null);
+  const [selectedAllocation, setSelectedAllocation] = useState(null);
   const [selectedFee, setSelectedFee] = useState(null);
   const [selectedComplaint, setSelectedComplaint] = useState(null);
 
-  /* ================= STUDENTS ================= */
+  // ====================================================
+  // FORM DATA
+  // ====================================================
 
-  const [students, setStudents] = useState([
-    {
-      id: 1,
-      name: "Bharath",
-      studentId: "HMS2026001",
-      department: "Computer Science Engineering",
-      room: "A-204",
-      status: "Active",
-    },
-    {
-      id: 2,
-      name: "Arun",
-      studentId: "HMS2026002",
-      department: "Information Technology",
-      room: "B-102",
-      status: "Active",
-    },
-  ]);
+  const [studentForm, setStudentForm] = useState(emptyStudent);
+  const [roomForm, setRoomForm] = useState(emptyRoom);
+  const [allocationForm, setAllocationForm] =
+    useState(emptyAllocation);
+  const [feeForm, setFeeForm] = useState(emptyFee);
+  const [complaintForm, setComplaintForm] =
+    useState(emptyComplaint);
 
-  /* ================= ROOMS ================= */
+  // ====================================================
+  // SEARCH
+  // ====================================================
 
-  const [rooms, setRooms] = useState([
-    {
-      id: 1,
-      roomNumber: "A-204",
-      block: "Block A",
-      type: "4 Sharing",
-      capacity: 4,
-      occupied: 2,
-    },
-    {
-      id: 2,
-      roomNumber: "B-102",
-      block: "Block B",
-      type: "2 Sharing",
-      capacity: 2,
-      occupied: 1,
-    },
-  ]);
+  const [studentSearch, setStudentSearch] = useState("");
 
-  /* ================= COMPLAINTS ================= */
-
-  const [complaints, setComplaints] = useState([
-    {
-      id: 1,
-      student: "Bharath",
-      studentId: "HMS2026001",
-      message: "Water leakage in bathroom",
-      status: "Pending",
-    },
-    {
-      id: 2,
-      student: "Arun",
-      studentId: "HMS2026002",
-      message: "Fan is not working properly",
-      status: "In Progress",
-    },
-  ]);
-
-  /* ================= FEES ================= */
-
-  const [fees, setFees] = useState([
-    {
-      id: 1,
-      student: "Bharath",
-      studentId: "HMS2026001",
-      totalAmount: 75000,
-      paidAmount: 30000,
-    },
-    {
-      id: 2,
-      student: "Arun",
-      studentId: "HMS2026002",
-      totalAmount: 75000,
-      paidAmount: 75000,
-    },
-  ]);
-
-  /* ================= FLASH MESSAGE ================= */
+  // ====================================================
+  // FLASH MESSAGE
+  // ====================================================
 
   const showMessage = (message) => {
     setFlashMessage(message);
@@ -125,145 +183,690 @@ function AdminDashboard() {
 
     setTimeout(() => {
       setShowFlash(false);
-    }, 2000);
+    }, 2500);
   };
 
-  /* ================= LOGOUT ================= */
+  // ====================================================
+  // ERROR HANDLER
+  // ====================================================
+
+  const handleApiError = (error, fallbackMessage) => {
+    console.error(error);
+
+    const message =
+      error?.response?.data?.message ||
+      fallbackMessage ||
+      "Something went wrong.";
+
+    alert(message);
+  };
+
+  // ====================================================
+  // LOAD ALL DATA
+  // ====================================================
+
+  const loadAllData = async () => {
+    try {
+      setLoading(true);
+
+      const [
+        dashboardResponse,
+        studentsResponse,
+        roomsResponse,
+        allocationsResponse,
+        complaintsResponse,
+        feesResponse,
+      ] = await Promise.all([
+        api.get("/dashboard/stats"),
+        api.get("/students?limit=1000"),
+        api.get("/rooms"),
+        api.get("/room-allocations"),
+        api.get("/complaints"),
+        api.get("/fees"),
+      ]);
+
+      setDashboardStats(dashboardResponse.data);
+
+      setStudents(studentsResponse.data.students || []);
+      setRooms(roomsResponse.data.rooms || []);
+      setAllocations(allocationsResponse.data.allocations || []);
+      setComplaints(complaintsResponse.data.complaints || []);
+      setFees(feesResponse.data.fees || []);
+    } catch (error) {
+      console.error("Failed to load admin data:", error);
+
+      if (error?.response?.status === 401) {
+        localStorage.removeItem("token");
+        localStorage.removeItem("role");
+        navigate("/", { replace: true });
+        return;
+      }
+
+      handleApiError(error, "Failed to load dashboard data.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ====================================================
+  // INITIAL LOAD
+  // ====================================================
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    const role = localStorage.getItem("role");
+
+    if (!token || role !== "admin") {
+      navigate("/", { replace: true });
+      return;
+    }
+
+    loadAllData();
+  }, []);
+
+  // ====================================================
+  // LOGOUT
+  // ====================================================
 
   const handleLogout = () => {
-    showMessage("Admin logged out successfully.");
+    localStorage.removeItem("token");
+    localStorage.removeItem("role");
+    localStorage.removeItem("user");
 
-    setTimeout(() => {
-      navigate("/");
-    }, 2000);
+    navigate("/", { replace: true });
   };
 
-  /* ================= ROOM EDIT ================= */
+  // ====================================================
+  // STUDENT
+  // ====================================================
 
-  const openRoomEdit = (room) => {
-    setSelectedRoom({ ...room });
+  const openAddStudent = () => {
+    setSelectedStudent(null);
+    setStudentForm({ ...emptyStudent });
+    setShowStudentModal(true);
+  };
+
+  const openEditStudent = (student) => {
+    setSelectedStudent(student);
+
+    setStudentForm({
+      username: student.username || "",
+      password: "",
+      name: student.name || "",
+      rollNo: student.rollNo || "",
+      bedNumber: student.bedNumber || "",
+      course: student.course || "",
+      email: student.email || "",
+      phone: student.phone || "",
+      status: student.status || "Active",
+    });
+
+    setShowStudentModal(true);
+  };
+
+  const saveStudent = async () => {
+    try {
+      if (
+        !studentForm.username ||
+        !studentForm.name ||
+        !studentForm.rollNo ||
+        !studentForm.bedNumber ||
+        !studentForm.course ||
+        !studentForm.email ||
+        !studentForm.phone
+      ) {
+        alert("Please fill all required student fields.");
+        return;
+      }
+
+      if (!selectedStudent && !studentForm.password) {
+        alert("Password is required when creating a student.");
+        return;
+      }
+
+      setActionLoading(true);
+
+      if (selectedStudent) {
+        const response = await api.put(
+          `/students/${selectedStudent._id}`,
+          studentForm
+        );
+
+        showMessage(
+          response.data?.message ||
+            "Student updated successfully."
+        );
+      } else {
+        const response = await api.post(
+          "/students",
+          studentForm
+        );
+
+        showMessage(
+          response.data?.message ||
+            "Student created successfully."
+        );
+      }
+
+      setShowStudentModal(false);
+      setSelectedStudent(null);
+      setStudentForm({ ...emptyStudent });
+
+      await loadAllData();
+    } catch (error) {
+      handleApiError(error, "Failed to save student.");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const deleteStudent = async (studentId) => {
+    const confirmed = window.confirm(
+      "Are you sure you want to delete this student?"
+    );
+
+    if (!confirmed) return;
+
+    try {
+      setActionLoading(true);
+
+      const response = await api.delete(
+        `/students/${studentId}`
+      );
+
+      showMessage(
+        response.data?.message ||
+          "Student deleted successfully."
+      );
+
+      await loadAllData();
+    } catch (error) {
+      handleApiError(error, "Failed to delete student.");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // ====================================================
+  // ROOM
+  // ====================================================
+
+  const openAddRoom = () => {
+    setSelectedRoom(null);
+    setRoomForm({ ...emptyRoom });
     setShowRoomModal(true);
   };
 
-  const saveRoom = () => {
-    if (!selectedRoom.roomNumber || !selectedRoom.block) {
-      alert("Please fill all required fields.");
-      return;
+  const openEditRoom = (room) => {
+    setSelectedRoom(room);
+
+    setRoomForm({
+      roomNumber: room.roomNumber || "",
+      floor: room.floor ?? 0,
+      capacity: room.capacity ?? 1,
+      totalBeds: room.totalBeds ?? 1,
+      status: room.status || "Available",
+      description: room.description || "",
+    });
+
+    setShowRoomModal(true);
+  };
+
+  const saveRoom = async () => {
+    try {
+      if (
+        !roomForm.roomNumber ||
+        roomForm.floor === "" ||
+        roomForm.capacity === "" ||
+        roomForm.totalBeds === ""
+      ) {
+        alert(
+          "Please enter room number, floor, capacity and total beds."
+        );
+        return;
+      }
+
+      if (
+        Number(roomForm.totalBeds) >
+        Number(roomForm.capacity)
+      ) {
+        alert(
+          "Total beds cannot be greater than room capacity."
+        );
+        return;
+      }
+
+      setActionLoading(true);
+
+      if (selectedRoom) {
+        const response = await api.put(
+          `/rooms/${selectedRoom._id}`,
+          {
+            ...roomForm,
+            floor: Number(roomForm.floor),
+            capacity: Number(roomForm.capacity),
+            totalBeds: Number(roomForm.totalBeds),
+          }
+        );
+
+        showMessage(
+          response.data?.message ||
+            "Room updated successfully."
+        );
+      } else {
+        const response = await api.post("/rooms", {
+          ...roomForm,
+          floor: Number(roomForm.floor),
+          capacity: Number(roomForm.capacity),
+          totalBeds: Number(roomForm.totalBeds),
+        });
+
+        showMessage(
+          response.data?.message ||
+            "Room created successfully."
+        );
+      }
+
+      setShowRoomModal(false);
+      setSelectedRoom(null);
+      setRoomForm({ ...emptyRoom });
+
+      await loadAllData();
+    } catch (error) {
+      handleApiError(error, "Failed to save room.");
+    } finally {
+      setActionLoading(false);
     }
+  };
 
-    setRooms(
-      rooms.map((room) =>
-        room.id === selectedRoom.id
-          ? selectedRoom
-          : room
-      )
+  const deleteRoom = async (roomId) => {
+    const confirmed = window.confirm(
+      "Are you sure you want to delete this room?"
     );
 
-    setShowRoomModal(false);
+    if (!confirmed) return;
 
-    showMessage("Room details updated successfully.");
+    try {
+      setActionLoading(true);
+
+      const response = await api.delete(
+        `/rooms/${roomId}`
+      );
+
+      showMessage(
+        response.data?.message ||
+          "Room deleted successfully."
+      );
+
+      await loadAllData();
+    } catch (error) {
+      handleApiError(error, "Failed to delete room.");
+    } finally {
+      setActionLoading(false);
+    }
   };
 
-  const deleteRoom = (id) => {
-    setRooms(rooms.filter((room) => room.id !== id));
+  // ====================================================
+  // ROOM ALLOCATION
+  // ====================================================
 
-    showMessage("Room deleted successfully.");
+  const openAddAllocation = () => {
+    setSelectedAllocation(null);
+    setAllocationForm({ ...emptyAllocation });
+    setShowAllocationModal(true);
   };
 
-  /* ================= COMPLAINT EDIT ================= */
+  const saveAllocation = async () => {
+    try {
+      if (
+        !allocationForm.studentId ||
+        !allocationForm.roomId ||
+        !allocationForm.bedNumber
+      ) {
+        alert(
+          "Please select a student, room and enter bed number."
+        );
+        return;
+      }
 
-  const openComplaintEdit = (complaint) => {
-    setSelectedComplaint({ ...complaint });
-    setShowComplaintModal(true);
+      setActionLoading(true);
+
+      const response = await api.post(
+        "/room-allocations",
+        {
+          studentId: allocationForm.studentId,
+          roomId: allocationForm.roomId,
+          bedNumber: allocationForm.bedNumber,
+          allocationDate:
+            allocationForm.allocationDate || undefined,
+          remarks: allocationForm.remarks,
+        }
+      );
+
+      showMessage(
+        response.data?.message ||
+          "Room allocated successfully."
+      );
+
+      setShowAllocationModal(false);
+      setAllocationForm({ ...emptyAllocation });
+
+      await loadAllData();
+    } catch (error) {
+      handleApiError(
+        error,
+        "Failed to allocate room."
+      );
+    } finally {
+      setActionLoading(false);
+    }
   };
 
-  const saveComplaint = () => {
-    setComplaints(
-      complaints.map((complaint) =>
-        complaint.id === selectedComplaint.id
-          ? selectedComplaint
-          : complaint
-      )
+  const vacateAllocation = async (allocationId) => {
+    const confirmed = window.confirm(
+      "Are you sure you want to vacate this room allocation?"
     );
 
-    setShowComplaintModal(false);
+    if (!confirmed) return;
 
-    showMessage("Complaint status updated successfully.");
+    try {
+      setActionLoading(true);
+
+      const response = await api.delete(
+        `/room-allocations/${allocationId}`
+      );
+
+      showMessage(
+        response.data?.message ||
+          "Room allocation vacated successfully."
+      );
+
+      await loadAllData();
+    } catch (error) {
+      handleApiError(
+        error,
+        "Failed to vacate room allocation."
+      );
+    } finally {
+      setActionLoading(false);
+    }
   };
 
-  /* ================= FEE EDIT ================= */
+  // ====================================================
+  // FEES
+  // ====================================================
 
-  const openFeeEdit = (fee) => {
-    setSelectedFee({ ...fee });
+  const openAddFee = () => {
+    setSelectedFee(null);
+    setFeeForm({ ...emptyFee });
     setShowFeeModal(true);
   };
 
-  const saveFee = () => {
-    if (
-      selectedFee.paidAmount >
-      selectedFee.totalAmount
-    ) {
-      alert(
-        "Paid amount cannot be greater than total amount."
-      );
-      return;
+  const openEditFee = (fee) => {
+    setSelectedFee(fee);
+
+    setFeeForm({
+      studentId: fee.studentId?._id || "",
+      amount: fee.amount ?? "",
+      dueDate: fee.dueDate
+        ? fee.dueDate.substring(0, 10)
+        : "",
+      status: fee.status || "Pending",
+      description: fee.description || "",
+    });
+
+    setShowFeeModal(true);
+  };
+
+  const saveFee = async () => {
+    try {
+      if (
+        !feeForm.studentId ||
+        feeForm.amount === "" ||
+        !feeForm.dueDate
+      ) {
+        alert(
+          "Please select a student, enter amount and due date."
+        );
+        return;
+      }
+
+      if (Number(feeForm.amount) < 0) {
+        alert("Fee amount cannot be negative.");
+        return;
+      }
+
+      setActionLoading(true);
+
+      if (selectedFee) {
+        const response = await api.put(
+          `/fees/${selectedFee._id}`,
+          {
+            amount: Number(feeForm.amount),
+            dueDate: feeForm.dueDate,
+            status: feeForm.status,
+            description: feeForm.description,
+          }
+        );
+
+        showMessage(
+          response.data?.message ||
+            "Fee updated successfully."
+        );
+      } else {
+        const response = await api.post("/fees", {
+          studentId: feeForm.studentId,
+          amount: Number(feeForm.amount),
+          dueDate: feeForm.dueDate,
+          status: feeForm.status,
+          description: feeForm.description,
+        });
+
+        showMessage(
+          response.data?.message ||
+            "Fee created successfully."
+        );
+      }
+
+      setShowFeeModal(false);
+      setSelectedFee(null);
+      setFeeForm({ ...emptyFee });
+
+      await loadAllData();
+    } catch (error) {
+      handleApiError(error, "Failed to save fee.");
+    } finally {
+      setActionLoading(false);
     }
-
-    setFees(
-      fees.map((fee) =>
-        fee.id === selectedFee.id
-          ? {
-              ...selectedFee,
-              paidAmount: Number(
-                selectedFee.paidAmount
-              ),
-            }
-          : fee
-      )
-    );
-
-    setShowFeeModal(false);
-
-    showMessage("Fee details updated successfully.");
   };
 
-  /* ================= STUDENT DELETE ================= */
-
-  const deleteStudent = (id) => {
-    setStudents(
-      students.filter(
-        (student) => student.id !== id
-      )
+  const deleteFee = async (feeId) => {
+    const confirmed = window.confirm(
+      "Are you sure you want to delete this fee record?"
     );
 
-    showMessage("Student deleted successfully.");
+    if (!confirmed) return;
+
+    try {
+      setActionLoading(true);
+
+      const response = await api.delete(
+        `/fees/${feeId}`
+      );
+
+      showMessage(
+        response.data?.message ||
+          "Fee deleted successfully."
+      );
+
+      await loadAllData();
+    } catch (error) {
+      handleApiError(error, "Failed to delete fee.");
+    } finally {
+      setActionLoading(false);
+    }
   };
 
-  /* ================= RENDER CONTENT ================= */
+  // ====================================================
+  // COMPLAINT
+  // ====================================================
+
+  const openComplaintEdit = (complaint) => {
+    setSelectedComplaint(complaint);
+
+    setComplaintForm({
+      status: complaint.status || "Pending",
+      adminReply: complaint.adminReply || "",
+    });
+
+    setShowComplaintModal(true);
+  };
+
+  const saveComplaint = async () => {
+    if (!selectedComplaint) return;
+
+    try {
+      setActionLoading(true);
+
+      const response = await api.put(
+        `/complaints/${selectedComplaint._id}`,
+        complaintForm
+      );
+
+      showMessage(
+        response.data?.message ||
+          "Complaint updated successfully."
+      );
+
+      setShowComplaintModal(false);
+      setSelectedComplaint(null);
+      setComplaintForm({ ...emptyComplaint });
+
+      await loadAllData();
+    } catch (error) {
+      handleApiError(
+        error,
+        "Failed to update complaint."
+      );
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // ====================================================
+  // FILTER STUDENTS
+  // ====================================================
+
+  const filteredStudents = students.filter((student) => {
+    const text = studentSearch
+      .trim()
+      .toLowerCase();
+
+    if (!text) return true;
+
+    return (
+      student.name?.toLowerCase().includes(text) ||
+      student.username?.toLowerCase().includes(text) ||
+      student.rollNo?.toLowerCase().includes(text) ||
+      student.email?.toLowerCase().includes(text) ||
+      student.course?.toLowerCase().includes(text)
+    );
+  });
+
+  // ====================================================
+  // ROOM OCCUPANCY
+  // ====================================================
+
+  const getRoomOccupiedCount = (roomId) => {
+    return allocations.filter(
+      (allocation) =>
+        allocation.roomId?._id === roomId &&
+        allocation.status === "Active"
+    ).length;
+  };
+
+  // ====================================================
+  // DASHBOARD CALCULATIONS
+  // ====================================================
+
+  const totalStudents =
+    dashboardStats?.students?.total ??
+    students.length;
+
+  const activeStudents =
+    dashboardStats?.students?.active ??
+    students.filter(
+      (student) => student.status === "Active"
+    ).length;
+
+  const totalRooms = rooms.length;
+
+  const occupiedBeds = allocations.filter(
+    (allocation) =>
+      allocation.status === "Active"
+  ).length;
+
+  const availableBeds = Math.max(
+    rooms.reduce(
+      (total, room) =>
+        total + Number(room.totalBeds || 0),
+      0
+    ) - occupiedBeds,
+    0
+  );
+
+  const activeComplaints = complaints.filter(
+    (complaint) =>
+      complaint.status !== "Resolved"
+  ).length;
+
+  const pendingFees = fees.filter(
+    (fee) => fee.status === "Pending"
+  );
+
+  const completedFees = fees.filter(
+    (fee) => fee.status === "Completed"
+  );
+
+  const pendingAmount = pendingFees.reduce(
+    (total, fee) =>
+      total + Number(fee.amount || 0),
+    0
+  );
+
+  const completedAmount = completedFees.reduce(
+    (total, fee) =>
+      total + Number(fee.amount || 0),
+    0
+  );
+
+  // ====================================================
+  // RENDER CONTENT
+  // ====================================================
 
   const renderContent = () => {
-
-    /* ================= DASHBOARD ================= */
+    // ==================================================
+    // DASHBOARD
+    // ==================================================
 
     if (activePage === "dashboard") {
       return (
         <div className="admin-content">
-
           <div className="page-header">
             <h1>Admin Dashboard</h1>
+
             <p>
               Manage your hostel operations from one place.
             </p>
           </div>
 
           <div className="admin-stats">
-
             <div className="admin-stat-card">
               <FaUsers />
 
               <div>
                 <p>Total Students</p>
-                <h2>{students.length}</h2>
+                <h2>{totalStudents}</h2>
               </div>
             </div>
 
@@ -272,7 +875,7 @@ function AdminDashboard() {
 
               <div>
                 <p>Total Rooms</p>
-                <h2>{rooms.length}</h2>
+                <h2>{totalRooms}</h2>
               </div>
             </div>
 
@@ -281,17 +884,7 @@ function AdminDashboard() {
 
               <div>
                 <p>Active Complaints</p>
-
-                <h2>
-                  {
-                    complaints.filter(
-                      (complaint) =>
-                        complaint.status !==
-                        "Completed"
-                    ).length
-                  }
-                </h2>
-
+                <h2>{activeComplaints}</h2>
               </div>
             </div>
 
@@ -299,232 +892,96 @@ function AdminDashboard() {
               <FaMoneyBillWave />
 
               <div>
-                <p>Fee Records</p>
-                <h2>{fees.length}</h2>
+                <p>Pending Fees</p>
+                <h2>{pendingFees.length}</h2>
               </div>
             </div>
-
           </div>
 
-
           <div className="admin-dashboard-grid">
-
             <div className="dashboard-card">
-
               <h2>Recent Complaints</h2>
 
-              {complaints.map((complaint) => (
+              {complaints.length === 0 ? (
+                <p>No complaints found.</p>
+              ) : (
+                complaints.slice(0, 5).map(
+                  (complaint) => (
+                    <div
+                      className="recent-item"
+                      key={complaint._id}
+                    >
+                      <div>
+                        <strong>
+                          {complaint.studentId?.name ||
+                            "Unknown Student"}
+                        </strong>
 
-                <div
-                  className="recent-item"
-                  key={complaint.id}
-                >
+                        <p>
+                          {complaint.title}
+                        </p>
+                      </div>
 
-                  <div>
-                    <strong>
-                      {complaint.student}
-                    </strong>
-
-                    <p>
-                      {complaint.message}
-                    </p>
-                  </div>
-
-                  <span
-                    className={`complaint-status ${complaint.status
-                      .toLowerCase()
-                      .replace(" ", "-")}`}
-                  >
-                    {complaint.status}
-                  </span>
-
-                </div>
-
-              ))}
-
+                      <span
+                        className={`complaint-status ${(
+                          complaint.status || ""
+                        )
+                          .toLowerCase()
+                          .replace(" ", "-")}`}
+                      >
+                        {complaint.status}
+                      </span>
+                    </div>
+                  )
+                )
+              )}
             </div>
 
-
             <div className="dashboard-card">
-
               <h2>Quick Overview</h2>
 
               <div className="overview-row">
-                <span>Occupied Beds</span>
+                <span>Active Students</span>
+                <strong>{activeStudents}</strong>
+              </div>
 
-                <strong>
-                  {rooms.reduce(
-                    (total, room) =>
-                      total +
-                      Number(room.occupied),
-                    0
-                  )}
-                </strong>
+              <div className="overview-row">
+                <span>Occupied Beds</span>
+                <strong>{occupiedBeds}</strong>
               </div>
 
               <div className="overview-row">
                 <span>Available Beds</span>
+                <strong>{availableBeds}</strong>
+              </div>
 
+              <div className="overview-row">
+                <span>Pending Fee Amount</span>
                 <strong>
-                  {rooms.reduce(
-                    (total, room) =>
-                      total +
-                      (
-                        Number(room.capacity) -
-                        Number(room.occupied)
-                      ),
-                    0
-                  )}
+                  ₹{pendingAmount.toLocaleString()}
                 </strong>
               </div>
 
               <div className="overview-row">
-                <span>Total Fee Collected</span>
-
+                <span>Completed Fee Amount</span>
                 <strong>
-                  ₹
-                  {fees.reduce(
-                    (total, fee) =>
-                      total +
-                      Number(fee.paidAmount),
-                    0
-                  )}
+                  ₹{completedAmount.toLocaleString()}
                 </strong>
               </div>
-
             </div>
-
           </div>
-
         </div>
       );
     }
 
-
-    /* ================= ROOMS ================= */
-
-    if (activePage === "rooms") {
-      return (
-        <div className="admin-content">
-
-          <div className="page-header page-flex">
-
-            <div>
-              <h1>Rooms Management</h1>
-              <p>
-                Create and manage hostel rooms.
-              </p>
-            </div>
-
-            <button
-              className="primary-btn"
-              onClick={() =>
-                showMessage(
-                  "Add Room feature will be added next."
-                )
-              }
-            >
-              <FaPlus />
-              Add Room
-            </button>
-
-          </div>
-
-
-          <div className="table-card">
-
-            <table>
-
-              <thead>
-                <tr>
-                  <th>Room Number</th>
-                  <th>Block</th>
-                  <th>Room Type</th>
-                  <th>Capacity</th>
-                  <th>Occupied</th>
-                  <th>Available</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-
-
-              <tbody>
-
-                {rooms.map((room) => (
-
-                  <tr key={room.id}>
-
-                    <td>
-                      {room.roomNumber}
-                    </td>
-
-                    <td>
-                      {room.block}
-                    </td>
-
-                    <td>
-                      {room.type}
-                    </td>
-
-                    <td>
-                      {room.capacity}
-                    </td>
-
-                    <td>
-                      {room.occupied}
-                    </td>
-
-                    <td>
-                      {room.capacity -
-                        room.occupied}
-                    </td>
-
-                    <td>
-
-                      <button
-                        className="action-btn edit"
-                        onClick={() =>
-                          openRoomEdit(room)
-                        }
-                      >
-                        <FaEdit />
-                      </button>
-
-
-                      <button
-                        className="action-btn delete"
-                        onClick={() =>
-                          deleteRoom(room.id)
-                        }
-                      >
-                        <FaTrash />
-                      </button>
-
-                    </td>
-
-                  </tr>
-
-                ))}
-
-              </tbody>
-
-            </table>
-
-          </div>
-
-        </div>
-      );
-    }
-
-
-    /* ================= STUDENTS ================= */
+    // ==================================================
+    // STUDENTS
+    // ==================================================
 
     if (activePage === "students") {
       return (
         <div className="admin-content">
-
           <div className="page-header page-flex">
-
             <div>
               <h1>Students Management</h1>
 
@@ -535,344 +992,615 @@ function AdminDashboard() {
 
             <button
               className="primary-btn"
-              onClick={() =>
-                showMessage(
-                  "Add Student feature will be added next."
-                )
-              }
+              onClick={openAddStudent}
             >
               <FaPlus />
               Add Student
             </button>
-
           </div>
 
-
           <div className="table-card">
+            <div style={{ marginBottom: "15px" }}>
+              <input
+                type="text"
+                placeholder="Search students..."
+                value={studentSearch}
+                onChange={(e) =>
+                  setStudentSearch(e.target.value)
+                }
+                style={{
+                  width: "100%",
+                  maxWidth: "400px",
+                  padding: "10px",
+                  borderRadius: "6px",
+                  border: "1px solid #ccc",
+                }}
+              />
+            </div>
 
             <table>
-
               <thead>
-
                 <tr>
                   <th>Name</th>
-                  <th>Student ID</th>
-                  <th>Department</th>
-                  <th>Room Number</th>
+                  <th>Username</th>
+                  <th>Roll No</th>
+                  <th>Course</th>
+                  <th>Room</th>
                   <th>Status</th>
                   <th>Actions</th>
                 </tr>
-
               </thead>
 
-
               <tbody>
-
-                {students.map((student) => (
-
-                  <tr key={student.id}>
-
-                    <td>
-                      {student.name}
+                {filteredStudents.length === 0 ? (
+                  <tr>
+                    <td colSpan="7">
+                      No students found.
                     </td>
-
-                    <td>
-                      {student.studentId}
-                    </td>
-
-                    <td>
-                      {student.department}
-                    </td>
-
-                    <td>
-                      {student.room}
-                    </td>
-
-                    <td>
-                      <span className="active-badge">
-                        {student.status}
-                      </span>
-                    </td>
-
-                    <td>
-
-                      <button
-                        className="action-btn edit"
-                        onClick={() =>
-                          showMessage(
-                            "Student Edit feature will be added next."
-                          )
-                        }
-                      >
-                        <FaEdit />
-                      </button>
-
-
-                      <button
-                        className="action-btn delete"
-                        onClick={() =>
-                          deleteStudent(student.id)
-                        }
-                      >
-                        <FaTrash />
-                      </button>
-
-                    </td>
-
                   </tr>
+                ) : (
+                  filteredStudents.map(
+                    (student) => {
+                      const allocation =
+                        allocations.find(
+                          (item) =>
+                            item.studentId?._id ===
+                              student._id &&
+                            item.status === "Active"
+                        );
 
-                ))}
+                      return (
+                        <tr key={student._id}>
+                          <td>{student.name}</td>
 
+                          <td>
+                            {student.username}
+                          </td>
+
+                          <td>
+                            {student.rollNo}
+                          </td>
+
+                          <td>
+                            {student.course}
+                          </td>
+
+                          <td>
+                            {allocation?.roomId
+                              ?.roomNumber ||
+                              "Not Allocated"}
+                          </td>
+
+                          <td>
+                            <span className="active-badge">
+                              {student.status}
+                            </span>
+                          </td>
+
+                          <td>
+                            <button
+                              className="action-btn edit"
+                              onClick={() =>
+                                openEditStudent(
+                                  student
+                                )
+                              }
+                            >
+                              <FaEdit />
+                            </button>
+
+                            <button
+                              className="action-btn delete"
+                              onClick={() =>
+                                deleteStudent(
+                                  student._id
+                                )
+                              }
+                              disabled={actionLoading}
+                            >
+                              <FaTrash />
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    }
+                  )
+                )}
               </tbody>
-
             </table>
-
           </div>
-
         </div>
       );
     }
 
+    // ==================================================
+    // ROOMS
+    // ==================================================
 
-    /* ================= COMPLAINTS ================= */
+    if (activePage === "rooms") {
+      return (
+        <div className="admin-content">
+          <div className="page-header page-flex">
+            <div>
+              <h1>Rooms Management</h1>
+
+              <p>
+                Create and manage hostel rooms.
+              </p>
+            </div>
+
+            <button
+              className="primary-btn"
+              onClick={openAddRoom}
+            >
+              <FaPlus />
+              Add Room
+            </button>
+          </div>
+
+          <div className="table-card">
+            <table>
+              <thead>
+                <tr>
+                  <th>Room Number</th>
+                  <th>Floor</th>
+                  <th>Capacity</th>
+                  <th>Total Beds</th>
+                  <th>Occupied</th>
+                  <th>Available</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {rooms.length === 0 ? (
+                  <tr>
+                    <td colSpan="8">
+                      No rooms found.
+                    </td>
+                  </tr>
+                ) : (
+                  rooms.map((room) => {
+                    const occupied =
+                      getRoomOccupiedCount(
+                        room._id
+                      );
+
+                    const available = Math.max(
+                      Number(room.totalBeds) -
+                        occupied,
+                      0
+                    );
+
+                    return (
+                      <tr key={room._id}>
+                        <td>
+                          {room.roomNumber}
+                        </td>
+
+                        <td>{room.floor}</td>
+
+                        <td>{room.capacity}</td>
+
+                        <td>{room.totalBeds}</td>
+
+                        <td>{occupied}</td>
+
+                        <td>{available}</td>
+
+                        <td>
+                          {room.status}
+                        </td>
+
+                        <td>
+                          <button
+                            className="action-btn edit"
+                            onClick={() =>
+                              openEditRoom(
+                                room
+                              )
+                            }
+                          >
+                            <FaEdit />
+                          </button>
+
+                          <button
+                            className="action-btn delete"
+                            onClick={() =>
+                              deleteRoom(
+                                room._id
+                              )
+                            }
+                            disabled={
+                              actionLoading
+                            }
+                          >
+                            <FaTrash />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      );
+    }
+
+    // ==================================================
+    // ROOM ALLOCATION
+    // ==================================================
+
+    if (activePage === "allocation") {
+      return (
+        <div className="admin-content">
+          <div className="page-header page-flex">
+            <div>
+              <h1>Room Allocation</h1>
+
+              <p>
+                Allocate rooms and beds to students.
+              </p>
+            </div>
+
+            <button
+              className="primary-btn"
+              onClick={openAddAllocation}
+            >
+              <FaPlus />
+              Allocate Room
+            </button>
+          </div>
+
+          <div className="table-card">
+            <table>
+              <thead>
+                <tr>
+                  <th>Student</th>
+                  <th>Roll No</th>
+                  <th>Room</th>
+                  <th>Bed</th>
+                  <th>Allocation Date</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {allocations.length === 0 ? (
+                  <tr>
+                    <td colSpan="7">
+                      No room allocations found.
+                    </td>
+                  </tr>
+                ) : (
+                  allocations.map(
+                    (allocation) => (
+                      <tr
+                        key={allocation._id}
+                      >
+                        <td>
+                          {allocation
+                            .studentId
+                            ?.name ||
+                            "Unknown"}
+                        </td>
+
+                        <td>
+                          {allocation
+                            .studentId
+                            ?.rollNo ||
+                            "-"}
+                        </td>
+
+                        <td>
+                          {allocation
+                            .roomId
+                            ?.roomNumber ||
+                            "-"}
+                        </td>
+
+                        <td>
+                          {allocation.bedNumber}
+                        </td>
+
+                        <td>
+                          {allocation
+                            .allocationDate
+                            ? new Date(
+                                allocation.allocationDate
+                              ).toLocaleDateString()
+                            : "-"}
+                        </td>
+
+                        <td>
+                          {allocation.status}
+                        </td>
+
+                        <td>
+                          {allocation.status ===
+                            "Active" && (
+                            <button
+                              className="action-btn delete"
+                              title="Vacate"
+                              onClick={() =>
+                                vacateAllocation(
+                                  allocation._id
+                                )
+                              }
+                              disabled={
+                                actionLoading
+                              }
+                            >
+                              <FaExchangeAlt />
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    )
+                  )
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      );
+    }
+
+    // ==================================================
+    // COMPLAINTS
+    // ==================================================
 
     if (activePage === "complaints") {
       return (
         <div className="admin-content">
-
           <div className="page-header">
-
-            <h1>
-              Complaints Management
-            </h1>
+            <h1>Complaints Management</h1>
 
             <p>
               Track and update student complaints.
             </p>
-
           </div>
-
 
           <div className="complaints-admin-list">
+            {complaints.length === 0 ? (
+              <p>No complaints found.</p>
+            ) : (
+              complaints.map((complaint) => (
+                <div
+                  className="admin-complaint-card"
+                  key={complaint._id}
+                >
+                  <div className="complaint-info">
+                    <div className="complaint-avatar">
+                      <FaUsers />
+                    </div>
 
-            {complaints.map((complaint) => (
+                    <div>
+                      <h3>
+                        {complaint.studentId
+                          ?.name ||
+                          "Unknown Student"}
+                      </h3>
 
-              <div
-                className="admin-complaint-card"
-                key={complaint.id}
-              >
+                      <span>
+                        {complaint.studentId
+                          ?.rollNo || "-"}
+                      </span>
 
-                <div className="complaint-info">
+                      <p>
+                        <strong>
+                          {complaint.title}
+                        </strong>
+                      </p>
 
-                  <div className="complaint-avatar">
-                    <FaUserGraduate />
+                      <p>
+                        {
+                          complaint.description
+                        }
+                      </p>
+
+                      {complaint.adminReply && (
+                        <p>
+                          <strong>
+                            Admin Reply:
+                          </strong>{" "}
+                          {
+                            complaint.adminReply
+                          }
+                        </p>
+                      )}
+                    </div>
                   </div>
 
-                  <div>
-
-                    <h3>
-                      {complaint.student}
-                    </h3>
-
-                    <span>
-                      {complaint.studentId}
+                  <div className="complaint-actions">
+                    <span
+                      className={`complaint-status ${(
+                        complaint.status || ""
+                      )
+                        .toLowerCase()
+                        .replace(" ", "-")}`}
+                    >
+                      {complaint.status}
                     </span>
 
-                    <p>
-                      {complaint.message}
-                    </p>
-
+                    <button
+                      className="action-btn edit"
+                      onClick={() =>
+                        openComplaintEdit(
+                          complaint
+                        )
+                      }
+                    >
+                      <FaEdit />
+                    </button>
                   </div>
-
                 </div>
-
-
-                <div className="complaint-actions">
-
-                  <span
-                    className={`complaint-status ${complaint.status
-                      .toLowerCase()
-                      .replace(" ", "-")}`}
-                  >
-                    {complaint.status}
-                  </span>
-
-
-                  <button
-                    className="action-btn edit"
-                    onClick={() =>
-                      openComplaintEdit(
-                        complaint
-                      )
-                    }
-                  >
-                    <FaEdit />
-                  </button>
-
-                </div>
-
-              </div>
-
-            ))}
-
+              ))
+            )}
           </div>
-
         </div>
       );
     }
 
-
-    /* ================= FEES ================= */
+    // ==================================================
+    // FEES
+    // ==================================================
 
     if (activePage === "fees") {
       return (
         <div className="admin-content">
+          <div className="page-header page-flex">
+            <div>
+              <h1>Fees Management</h1>
 
-          <div className="page-header">
+              <p>
+                Manage student fee records and payment
+                status.
+              </p>
+            </div>
 
-            <h1>Fees Details</h1>
-
-            <p>
-              Manage student hostel fee payments.
-            </p>
-
+            <button
+              className="primary-btn"
+              onClick={openAddFee}
+            >
+              <FaPlus />
+              Add Fee
+            </button>
           </div>
 
-
           <div className="table-card">
-
             <table>
-
               <thead>
-
                 <tr>
                   <th>Student</th>
-                  <th>Student ID</th>
-                  <th>Total Fee</th>
-                  <th>Paid Amount</th>
-                  <th>Balance</th>
+                  <th>Roll No</th>
+                  <th>Amount</th>
+                  <th>Due Date</th>
                   <th>Status</th>
+                  <th>Payment Date</th>
                   <th>Actions</th>
                 </tr>
-
               </thead>
 
-
               <tbody>
-
-                {fees.map((fee) => {
-
-                  const balance =
-                    fee.totalAmount -
-                    fee.paidAmount;
-
-                  const isPaid =
-                    balance === 0;
-
-                  return (
-
-                    <tr key={fee.id}>
-
+                {fees.length === 0 ? (
+                  <tr>
+                    <td colSpan="7">
+                      No fee records found.
+                    </td>
+                  </tr>
+                ) : (
+                  fees.map((fee) => (
+                    <tr key={fee._id}>
                       <td>
-                        {fee.student}
+                        {fee.studentId?.name ||
+                          "Unknown Student"}
                       </td>
 
                       <td>
-                        {fee.studentId}
+                        {fee.studentId?.rollNo ||
+                          "-"}
                       </td>
 
                       <td>
-                        ₹{fee.totalAmount}
+                        ₹
+                        {Number(
+                          fee.amount || 0
+                        ).toLocaleString()}
                       </td>
 
                       <td>
-                        ₹{fee.paidAmount}
+                        {fee.dueDate
+                          ? new Date(
+                              fee.dueDate
+                            ).toLocaleDateString()
+                          : "-"}
                       </td>
 
                       <td>
-                        ₹{balance}
-                      </td>
-
-                      <td>
-
                         <span
                           className={
-                            isPaid
+                            fee.status ===
+                            "Completed"
                               ? "paid-badge"
                               : "not-paid-badge"
                           }
                         >
-
-                          {isPaid
-                            ? "Paid"
-                            : "Partial / Not Paid"}
-
+                          {fee.status}
                         </span>
-
                       </td>
 
+                      <td>
+                        {fee.paymentDate
+                          ? new Date(
+                              fee.paymentDate
+                            ).toLocaleDateString()
+                          : "-"}
+                      </td>
 
                       <td>
-
                         <button
                           className="action-btn edit"
                           onClick={() =>
-                            openFeeEdit(fee)
+                            openEditFee(
+                              fee
+                            )
                           }
                         >
                           <FaEdit />
                         </button>
 
+                        <button
+                          className="action-btn delete"
+                          onClick={() =>
+                            deleteFee(
+                              fee._id
+                            )
+                          }
+                          disabled={
+                            actionLoading
+                          }
+                        >
+                          <FaTrash />
+                        </button>
                       </td>
-
                     </tr>
-
-                  );
-                })}
-
+                  ))
+                )}
               </tbody>
-
             </table>
-
           </div>
-
-
-          <div className="fee-info-box">
-
-            <FaCheckCircle />
-
-            Admin can update partial payment amounts.
-            Student Dashboard will display Total Fee,
-            Paid Amount and Balance Amount.
-
-          </div>
-
         </div>
       );
     }
+
+    return null;
   };
 
+  // ====================================================
+  // RETURN
+  // ====================================================
 
   return (
     <div className="admin-dashboard">
-
-      {/* ================= SIDEBAR ================= */}
+      {/* ==================================================
+          SIDEBAR
+      ================================================== */}
 
       <aside className="admin-sidebar">
-
         <div className="admin-sidebar-header">
-
           <h2>HMS</h2>
 
           <span>
             Administrator Panel
           </span>
-
         </div>
 
-
         <nav className="admin-sidebar-menu">
-
           <button
             className={
               activePage === "dashboard"
@@ -886,7 +1614,6 @@ function AdminDashboard() {
             <FaHome />
             Dashboard
           </button>
-
 
           <button
             className={
@@ -902,7 +1629,6 @@ function AdminDashboard() {
             Rooms
           </button>
 
-
           <button
             className={
               activePage === "students"
@@ -917,6 +1643,19 @@ function AdminDashboard() {
             Students
           </button>
 
+          <button
+            className={
+              activePage === "allocation"
+                ? "admin-menu active"
+                : "admin-menu"
+            }
+            onClick={() =>
+              setActivePage("allocation")
+            }
+          >
+            <FaExchangeAlt />
+            Room Allocation
+          </button>
 
           <button
             className={
@@ -932,7 +1671,6 @@ function AdminDashboard() {
             Complaints
           </button>
 
-
           <button
             className={
               activePage === "fees"
@@ -946,48 +1684,220 @@ function AdminDashboard() {
             <FaMoneyBillWave />
             Fees Details
           </button>
-
         </nav>
 
-
         <div className="admin-sidebar-footer">
-
           <button
             className="admin-logout-btn"
             onClick={handleLogout}
           >
-
             <FaSignOutAlt />
-
             Logout
-
           </button>
-
         </div>
-
       </aside>
 
-
-      {/* ================= MAIN ================= */}
+      {/* ==================================================
+          MAIN
+      ================================================== */}
 
       <main className="admin-main-content">
-
-        {renderContent()}
-
+        {loading ? (
+          <div
+            style={{
+              padding: "40px",
+              textAlign: "center",
+            }}
+          >
+            <h2>Loading dashboard...</h2>
+          </div>
+        ) : (
+          renderContent()
+        )}
       </main>
 
+      {/* ==================================================
+          STUDENT MODAL
+      ================================================== */}
 
-      {/* ================= ROOM EDIT MODAL ================= */}
-
-      {showRoomModal && selectedRoom && (
-
+      {showStudentModal && (
         <div className="modal-overlay">
-
           <div className="edit-modal">
-
             <div className="modal-header">
+              <h2>
+                {selectedStudent
+                  ? "Edit Student"
+                  : "Add Student"}
+              </h2>
 
-              <h2>Edit Room</h2>
+              <button
+                onClick={() =>
+                  setShowStudentModal(false)
+                }
+              >
+                <FaTimes />
+              </button>
+            </div>
+
+            <div className="modal-form">
+              <label>Username</label>
+              <input
+                type="text"
+                value={studentForm.username}
+                onChange={(e) =>
+                  setStudentForm({
+                    ...studentForm,
+                    username:
+                      e.target.value,
+                  })
+                }
+              />
+
+              <label>
+                {selectedStudent
+                  ? "Password (leave blank to keep current)"
+                  : "Password"}
+              </label>
+
+              <input
+                type="password"
+                value={studentForm.password}
+                onChange={(e) =>
+                  setStudentForm({
+                    ...studentForm,
+                    password:
+                      e.target.value,
+                  })
+                }
+              />
+
+              <label>Name</label>
+              <input
+                type="text"
+                value={studentForm.name}
+                onChange={(e) =>
+                  setStudentForm({
+                    ...studentForm,
+                    name: e.target.value,
+                  })
+                }
+              />
+
+              <label>Roll Number</label>
+              <input
+                type="text"
+                value={studentForm.rollNo}
+                onChange={(e) =>
+                  setStudentForm({
+                    ...studentForm,
+                    rollNo:
+                      e.target.value,
+                  })
+                }
+              />
+
+              <label>Bed Number</label>
+              <input
+                type="text"
+                value={studentForm.bedNumber}
+                onChange={(e) =>
+                  setStudentForm({
+                    ...studentForm,
+                    bedNumber:
+                      e.target.value,
+                  })
+                }
+              />
+
+              <label>Course</label>
+              <input
+                type="text"
+                value={studentForm.course}
+                onChange={(e) =>
+                  setStudentForm({
+                    ...studentForm,
+                    course:
+                      e.target.value,
+                  })
+                }
+              />
+
+              <label>Email</label>
+              <input
+                type="email"
+                value={studentForm.email}
+                onChange={(e) =>
+                  setStudentForm({
+                    ...studentForm,
+                    email:
+                      e.target.value,
+                  })
+                }
+              />
+
+              <label>Phone</label>
+              <input
+                type="text"
+                value={studentForm.phone}
+                onChange={(e) =>
+                  setStudentForm({
+                    ...studentForm,
+                    phone:
+                      e.target.value,
+                  })
+                }
+              />
+
+              <label>Status</label>
+
+              <select
+                value={studentForm.status}
+                onChange={(e) =>
+                  setStudentForm({
+                    ...studentForm,
+                    status:
+                      e.target.value,
+                  })
+                }
+              >
+                <option value="Active">
+                  Active
+                </option>
+
+                <option value="Inactive">
+                  Inactive
+                </option>
+              </select>
+
+              <button
+                className="modal-save-btn"
+                onClick={saveStudent}
+                disabled={actionLoading}
+              >
+                {actionLoading
+                  ? "Saving..."
+                  : selectedStudent
+                  ? "Update Student"
+                  : "Create Student"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ==================================================
+          ROOM MODAL
+      ================================================== */}
+
+      {showRoomModal && (
+        <div className="modal-overlay">
+          <div className="edit-modal">
+            <div className="modal-header">
+              <h2>
+                {selectedRoom
+                  ? "Edit Room"
+                  : "Add Room"}
+              </h2>
 
               <button
                 onClick={() =>
@@ -996,369 +1906,532 @@ function AdminDashboard() {
               >
                 <FaTimes />
               </button>
-
             </div>
 
-
             <div className="modal-form">
-
-              <label>
-                Room Number
-              </label>
+              <label>Room Number</label>
 
               <input
                 type="text"
-                value={
-                  selectedRoom.roomNumber
-                }
+                value={roomForm.roomNumber}
                 onChange={(e) =>
-                  setSelectedRoom({
-                    ...selectedRoom,
+                  setRoomForm({
+                    ...roomForm,
                     roomNumber:
                       e.target.value,
                   })
                 }
               />
 
-
-              <label>
-                Block
-              </label>
+              <label>Floor</label>
 
               <input
-                type="text"
-                value={selectedRoom.block}
+                type="number"
+                min="0"
+                value={roomForm.floor}
                 onChange={(e) =>
-                  setSelectedRoom({
-                    ...selectedRoom,
-                    block: e.target.value,
+                  setRoomForm({
+                    ...roomForm,
+                    floor: Number(
+                      e.target.value
+                    ),
                   })
                 }
               />
 
+              <label>Capacity</label>
 
-              <label>
-                Room Type
-              </label>
+              <input
+                type="number"
+                min="1"
+                value={roomForm.capacity}
+                onChange={(e) =>
+                  setRoomForm({
+                    ...roomForm,
+                    capacity: Number(
+                      e.target.value
+                    ),
+                  })
+                }
+              />
+
+              <label>Total Beds</label>
+
+              <input
+                type="number"
+                min="1"
+                value={roomForm.totalBeds}
+                onChange={(e) =>
+                  setRoomForm({
+                    ...roomForm,
+                    totalBeds: Number(
+                      e.target.value
+                    ),
+                  })
+                }
+              />
+
+              <label>Status</label>
 
               <select
-                value={selectedRoom.type}
+                value={roomForm.status}
                 onChange={(e) =>
-                  setSelectedRoom({
-                    ...selectedRoom,
-                    type: e.target.value,
+                  setRoomForm({
+                    ...roomForm,
+                    status:
+                      e.target.value,
                   })
                 }
               >
-
-                <option>
-                  1 Sharing
+                <option value="Available">
+                  Available
                 </option>
 
-                <option>
-                  2 Sharing
+                <option value="Full">
+                  Full
                 </option>
 
-                <option>
-                  3 Sharing
+                <option value="Maintenance">
+                  Maintenance
                 </option>
-
-                <option>
-                  4 Sharing
-                </option>
-
               </select>
 
+              <label>Description</label>
 
-              <label>
-                Room Capacity
-              </label>
-
-              <input
-                type="number"
-                value={
-                  selectedRoom.capacity
-                }
+              <textarea
+                value={roomForm.description}
                 onChange={(e) =>
-                  setSelectedRoom({
-                    ...selectedRoom,
-                    capacity:
-                      Number(e.target.value),
+                  setRoomForm({
+                    ...roomForm,
+                    description:
+                      e.target.value,
                   })
                 }
               />
-
-
-              <label>
-                Occupied Beds
-              </label>
-
-              <input
-                type="number"
-                value={
-                  selectedRoom.occupied
-                }
-                onChange={(e) =>
-                  setSelectedRoom({
-                    ...selectedRoom,
-                    occupied:
-                      Number(e.target.value),
-                  })
-                }
-              />
-
 
               <button
                 className="modal-save-btn"
                 onClick={saveRoom}
+                disabled={actionLoading}
               >
-                OK - Save Changes
+                {actionLoading
+                  ? "Saving..."
+                  : selectedRoom
+                  ? "Update Room"
+                  : "Create Room"}
               </button>
-
             </div>
-
           </div>
-
         </div>
-
       )}
 
+      {/* ==================================================
+          ALLOCATION MODAL
+      ================================================== */}
 
-      {/* ================= COMPLAINT EDIT MODAL ================= */}
+      {showAllocationModal && (
+        <div className="modal-overlay">
+          <div className="edit-modal">
+            <div className="modal-header">
+              <h2>Allocate Room</h2>
+
+              <button
+                onClick={() =>
+                  setShowAllocationModal(false)
+                }
+              >
+                <FaTimes />
+              </button>
+            </div>
+
+            <div className="modal-form">
+              <label>Student</label>
+
+              <select
+                value={
+                  allocationForm.studentId
+                }
+                onChange={(e) =>
+                  setAllocationForm({
+                    ...allocationForm,
+                    studentId:
+                      e.target.value,
+                  })
+                }
+              >
+                <option value="">
+                  Select Student
+                </option>
+
+                {students
+                  .filter(
+                    (student) =>
+                      student.status ===
+                      "Active"
+                  )
+                  .map((student) => (
+                    <option
+                      key={student._id}
+                      value={student._id}
+                    >
+                      {student.name} -{" "}
+                      {student.rollNo}
+                    </option>
+                  ))}
+              </select>
+
+              <label>Room</label>
+
+              <select
+                value={
+                  allocationForm.roomId
+                }
+                onChange={(e) =>
+                  setAllocationForm({
+                    ...allocationForm,
+                    roomId:
+                      e.target.value,
+                  })
+                }
+              >
+                <option value="">
+                  Select Room
+                </option>
+
+                {rooms
+                  .filter(
+                    (room) =>
+                      room.status !==
+                      "Maintenance" &&
+                      getRoomOccupiedCount(
+                        room._id
+                      ) <
+                        Number(
+                          room.totalBeds
+                        )
+                  )
+                  .map((room) => (
+                    <option
+                      key={room._id}
+                      value={room._id}
+                    >
+                      {room.roomNumber} -{" "}
+                      {getRoomOccupiedCount(
+                        room._id
+                      )} /{" "}
+                      {room.totalBeds} occupied
+                    </option>
+                  ))}
+              </select>
+
+              <label>Bed Number</label>
+
+              <input
+                type="text"
+                placeholder="Example: 1"
+                value={
+                  allocationForm.bedNumber
+                }
+                onChange={(e) =>
+                  setAllocationForm({
+                    ...allocationForm,
+                    bedNumber:
+                      e.target.value,
+                  })
+                }
+              />
+
+              <label>Allocation Date</label>
+
+              <input
+                type="date"
+                value={
+                  allocationForm.allocationDate
+                }
+                onChange={(e) =>
+                  setAllocationForm({
+                    ...allocationForm,
+                    allocationDate:
+                      e.target.value,
+                  })
+                }
+              />
+
+              <label>Remarks</label>
+
+              <textarea
+                value={
+                  allocationForm.remarks
+                }
+                onChange={(e) =>
+                  setAllocationForm({
+                    ...allocationForm,
+                    remarks:
+                      e.target.value,
+                  })
+                }
+              />
+
+              <button
+                className="modal-save-btn"
+                onClick={saveAllocation}
+                disabled={actionLoading}
+              >
+                {actionLoading
+                  ? "Allocating..."
+                  : "Allocate Room"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ==================================================
+          FEE MODAL
+      ================================================== */}
+
+      {showFeeModal && (
+        <div className="modal-overlay">
+          <div className="edit-modal">
+            <div className="modal-header">
+              <h2>
+                {selectedFee
+                  ? "Edit Fee"
+                  : "Add Fee"}
+              </h2>
+
+              <button
+                onClick={() =>
+                  setShowFeeModal(false)
+                }
+              >
+                <FaTimes />
+              </button>
+            </div>
+
+            <div className="modal-form">
+              <label>Student</label>
+
+              <select
+                value={feeForm.studentId}
+                disabled={!!selectedFee}
+                onChange={(e) =>
+                  setFeeForm({
+                    ...feeForm,
+                    studentId:
+                      e.target.value,
+                  })
+                }
+              >
+                <option value="">
+                  Select Student
+                </option>
+
+                {students.map((student) => (
+                  <option
+                    key={student._id}
+                    value={student._id}
+                  >
+                    {student.name} -{" "}
+                    {student.rollNo}
+                  </option>
+                ))}
+              </select>
+
+              <label>Amount</label>
+
+              <input
+                type="number"
+                min="0"
+                value={feeForm.amount}
+                onChange={(e) =>
+                  setFeeForm({
+                    ...feeForm,
+                    amount:
+                      e.target.value,
+                  })
+                }
+              />
+
+              <label>Due Date</label>
+
+              <input
+                type="date"
+                value={feeForm.dueDate}
+                onChange={(e) =>
+                  setFeeForm({
+                    ...feeForm,
+                    dueDate:
+                      e.target.value,
+                  })
+                }
+              />
+
+              <label>Status</label>
+
+              <select
+                value={feeForm.status}
+                onChange={(e) =>
+                  setFeeForm({
+                    ...feeForm,
+                    status:
+                      e.target.value,
+                  })
+                }
+              >
+                <option value="Pending">
+                  Pending
+                </option>
+
+                <option value="Completed">
+                  Completed
+                </option>
+              </select>
+
+              <label>Description</label>
+
+              <textarea
+                value={feeForm.description}
+                onChange={(e) =>
+                  setFeeForm({
+                    ...feeForm,
+                    description:
+                      e.target.value,
+                  })
+                }
+              />
+
+              <button
+                className="modal-save-btn"
+                onClick={saveFee}
+                disabled={actionLoading}
+              >
+                {actionLoading
+                  ? "Saving..."
+                  : selectedFee
+                  ? "Update Fee"
+                  : "Create Fee"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ==================================================
+          COMPLAINT MODAL
+      ================================================== */}
 
       {showComplaintModal &&
         selectedComplaint && (
-
           <div className="modal-overlay">
-
             <div className="edit-modal">
-
               <div className="modal-header">
-
-                <h2>
-                  Update Complaint
-                </h2>
+                <h2>Update Complaint</h2>
 
                 <button
                   onClick={() =>
-                    setShowComplaintModal(false)
+                    setShowComplaintModal(
+                      false
+                    )
                   }
                 >
                   <FaTimes />
                 </button>
-
               </div>
 
-
               <div className="modal-form">
-
-                <label>
-                  Student
-                </label>
+                <label>Student</label>
 
                 <input
                   type="text"
                   value={
-                    selectedComplaint.student
+                    selectedComplaint
+                      .studentId?.name ||
+                    ""
                   }
                   disabled
                 />
 
-
-                <label>
-                  Complaint
-                </label>
+                <label>Complaint</label>
 
                 <textarea
                   value={
-                    selectedComplaint.message
+                    selectedComplaint
+                      .description || ""
                   }
-                  onChange={(e) =>
-                    setSelectedComplaint({
-                      ...selectedComplaint,
-                      message:
-                        e.target.value,
-                    })
-                  }
+                  disabled
                 />
 
-
-                <label>
-                  Complaint Status
-                </label>
+                <label>Status</label>
 
                 <select
                   value={
-                    selectedComplaint.status
+                    complaintForm.status
                   }
                   onChange={(e) =>
-                    setSelectedComplaint({
-                      ...selectedComplaint,
+                    setComplaintForm({
+                      ...complaintForm,
                       status:
                         e.target.value,
                     })
                   }
                 >
-
-                  <option>
+                  <option value="Pending">
                     Pending
                   </option>
 
-                  <option>
+                  <option value="In Progress">
                     In Progress
                   </option>
 
-                  <option>
-                    Completed
+                  <option value="Resolved">
+                    Resolved
                   </option>
-
                 </select>
 
+                <label>Admin Reply</label>
+
+                <textarea
+                  value={
+                    complaintForm.adminReply
+                  }
+                  onChange={(e) =>
+                    setComplaintForm({
+                      ...complaintForm,
+                      adminReply:
+                        e.target.value,
+                    })
+                  }
+                  placeholder="Enter reply to student..."
+                />
 
                 <button
                   className="modal-save-btn"
                   onClick={saveComplaint}
+                  disabled={actionLoading}
                 >
-                  OK - Update Complaint
+                  {actionLoading
+                    ? "Updating..."
+                    : "Update Complaint"}
                 </button>
-
               </div>
-
             </div>
-
           </div>
-
         )}
 
-
-      {/* ================= FEE EDIT MODAL ================= */}
-
-      {showFeeModal &&
-        selectedFee && (
-
-          <div className="modal-overlay">
-
-            <div className="edit-modal">
-
-              <div className="modal-header">
-
-                <h2>
-                  Update Fee Details
-                </h2>
-
-                <button
-                  onClick={() =>
-                    setShowFeeModal(false)
-                  }
-                >
-                  <FaTimes />
-                </button>
-
-              </div>
-
-
-              <div className="modal-form">
-
-                <label>
-                  Student
-                </label>
-
-                <input
-                  type="text"
-                  value={selectedFee.student}
-                  disabled
-                />
-
-
-                <label>
-                  Total Fee Amount
-                </label>
-
-                <input
-                  type="number"
-                  value={
-                    selectedFee.totalAmount
-                  }
-                  onChange={(e) =>
-                    setSelectedFee({
-                      ...selectedFee,
-                      totalAmount:
-                        Number(e.target.value),
-                    })
-                  }
-                />
-
-
-                <label>
-                  Paid Amount
-                </label>
-
-                <input
-                  type="number"
-                  value={
-                    selectedFee.paidAmount
-                  }
-                  onChange={(e) =>
-                    setSelectedFee({
-                      ...selectedFee,
-                      paidAmount:
-                        Number(e.target.value),
-                    })
-                  }
-                />
-
-
-                <div className="balance-preview">
-
-                  <span>
-                    Remaining Balance
-                  </span>
-
-                  <strong>
-                    ₹
-                    {selectedFee.totalAmount -
-                      selectedFee.paidAmount}
-                  </strong>
-
-                </div>
-
-
-                <button
-                  className="modal-save-btn"
-                  onClick={saveFee}
-                >
-                  OK - Save Fee Details
-                </button>
-
-              </div>
-
-            </div>
-
-          </div>
-
-        )}
-
-
-      {/* ================= FLASH MESSAGE ================= */}
+      {/* ==================================================
+          FLASH MESSAGE
+      ================================================== */}
 
       {showFlash && (
-
         <div className="admin-flash-overlay">
-
           <div className="admin-flash-message">
-
             <FaCheckCircle />
 
-            <h3>
-              {flashMessage}
-            </h3>
-
+            <h3>{flashMessage}</h3>
           </div>
-
         </div>
-
       )}
-
     </div>
   );
 }
