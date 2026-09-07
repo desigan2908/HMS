@@ -5,13 +5,16 @@ const dotenv = require("dotenv");
 dotenv.config();
 
 const connectDB = require("./config/db");
+const seedAdmin = require("./utils/seedAdmin");
 
 const app = express();
 
 // ==========================================
 // DATABASE
 // ==========================================
-connectDB();
+connectDB().then(() => {
+  seedAdmin();
+});
 
 // ==========================================
 // MIDDLEWARE

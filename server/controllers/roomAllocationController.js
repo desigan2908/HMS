@@ -17,8 +17,7 @@ const createAllocation = async (req, res) => {
 
     if (!studentId || !roomId || !bedNumber) {
       return res.status(400).json({
-        message:
-          "Please provide student ID, room ID, and bed number"
+        message: "Please provide student ID, room ID, and bed number"
       });
     }
 
@@ -56,8 +55,7 @@ const createAllocation = async (req, res) => {
 
     if (existingStudentAllocation) {
       return res.status(400).json({
-        message:
-          "Student already has an active room allocation"
+        message: "Student already has an active room allocation"
       });
     }
 
@@ -72,8 +70,7 @@ const createAllocation = async (req, res) => {
 
     if (room.status === "Maintenance") {
       return res.status(400).json({
-        message:
-          "Cannot allocate a bed in a room under maintenance"
+        message: "Cannot allocate a bed in a room under maintenance"
       });
     }
 
@@ -114,8 +111,7 @@ const createAllocation = async (req, res) => {
       bedNumberValue > room.totalBeds
     ) {
       return res.status(400).json({
-        message:
-          `Bed number cannot be greater than ${room.totalBeds}`
+        message: `Bed number cannot be greater than ${room.totalBeds}`
       });
     }
 
@@ -124,11 +120,13 @@ const createAllocation = async (req, res) => {
       studentId,
       roomId,
       bedNumber: bedNumber.trim(),
-      allocationDate:
-        allocationDate || new Date(),
-      remarks: remarks
-        ? remarks.trim()
-        : ""
+      allocationDate: allocationDate || new Date(),
+      remarks: remarks ? remarks.trim() : ""
+    });
+
+    // Sync bedNumber to student
+    await Student.findByIdAndUpdate(studentId, {
+      bedNumber: bedNumber.trim()
     });
 
     // Update room status
@@ -266,8 +264,7 @@ const getStudentAllocation = async (req, res) => {
 
     if (!allocation) {
       return res.status(404).json({
-        message:
-          "No active room allocation found for this student"
+        message: "No active room allocation found for this student"
       });
     }
 
@@ -279,6 +276,47 @@ const getStudentAllocation = async (req, res) => {
 
     res.status(500).json({
       message: "Failed to fetch student allocation",
+      error: error.message
+    });
+  }
+};
+
+// ==========================================
+// GET MY ALLOCATION - STUDENT
+// ==========================================
+const getMyAllocation = async (req, res) => {
+  try {
+    const studentId = req.user.studentId;
+
+    const allocation =
+      await RoomAllocation.findOne({
+        studentId,
+        status: "Active"
+      })
+        .populate(
+          "studentId",
+          "username name rollNo email phone course"
+        )
+        .populate(
+          "roomId",
+          "roomNumber floor capacity totalBeds status"
+        );
+
+    if (!allocation) {
+      return res.status(200).json({
+        message: "No active room allocation found",
+        allocation: null
+      });
+    }
+
+    res.status(200).json({
+      allocation
+    });
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      message: "Failed to fetch your room allocation",
       error: error.message
     });
   }
@@ -316,6 +354,11 @@ const vacateAllocation = async (req, res) => {
 
     await allocation.save();
 
+    // Clear bedNumber from student
+    await Student.findByIdAndUpdate(allocation.studentId, {
+      bedNumber: ""
+    });
+
     // Update room status back to Available
     const room = await Room.findById(
       allocation.roomId
@@ -345,5 +388,6 @@ module.exports = {
   getAllocations,
   getAllocationById,
   getStudentAllocation,
+  getMyAllocation,
   vacateAllocation
 };

@@ -5,15 +5,17 @@ const {
   getAllocations,
   getAllocationById,
   getStudentAllocation,
+  getMyAllocation,
   vacateAllocation
 } = require("../controllers/roomAllocationController");
 
 const adminMiddleware = require("../middleware/adminMiddleware");
+const studentAuthMiddleware = require("../middleware/studentAuthMiddleware");
 
 const router = express.Router();
 
 // ==========================================
-// ROOM ALLOCATION - ADMIN ONLY
+// ROOM ALLOCATION - ADMIN
 // ==========================================
 
 // Allocate room/bed to student
@@ -35,6 +37,17 @@ router.get(
   "/student/:studentId",
   adminMiddleware,
   getStudentAllocation
+);
+
+// ==========================================
+// ROOM ALLOCATION - STUDENT
+// ==========================================
+
+// Get currently logged-in student's allocation
+router.get(
+  "/my",
+  studentAuthMiddleware,
+  getMyAllocation
 );
 
 // Get allocation by allocation ID

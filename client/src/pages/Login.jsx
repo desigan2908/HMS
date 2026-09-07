@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+
 import {
   FaUserGraduate,
   FaUserShield,
@@ -11,38 +12,75 @@ import {
 
 import "../styles/Login.css";
 import { loginUser } from "../api/auth";
+import { loginStudent } from "../api/student";
 
 function Login() {
   const navigate = useNavigate();
 
+  // ==========================================
+  // STATE
+  // ==========================================
   const [role, setRole] = useState("student");
+
   const [studentId, setStudentId] = useState("");
   const [adminId, setAdminId] = useState("");
+
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+
   const [loading, setLoading] = useState(false);
 
+  // ==========================================
+  // CHANGE ROLE
+  // ==========================================
   const handleRoleChange = (newRole) => {
+    if (loading) return;
+
     setRole(newRole);
     setPassword("");
+
+    // Clear previous login field when switching roles
+    if (newRole === "student") {
+      setAdminId("");
+    } else {
+      setStudentId("");
+    }
   };
 
+  // ==========================================
+  // LOGIN
+  // ==========================================
   const handleLogin = async (e) => {
     e.preventDefault();
 
     if (loading) return;
 
     // ==========================================
-    // VALIDATION
+    // STUDENT VALIDATION
     // ==========================================
     if (role === "student") {
-      if (!studentId.trim() || !password) {
-        alert("Please enter Student ID and Password");
+      if (!studentId.trim()) {
+        alert("Please enter Student ID");
         return;
       }
-    } else {
-      if (!adminId.trim() || !password) {
-        alert("Please enter Admin Email and Password");
+
+      if (!password) {
+        alert("Please enter Password");
+        return;
+      }
+    }
+
+    // ==========================================
+    // ADMIN VALIDATION
+    // ==========================================
+    if (role === "admin") {
+      if (!adminId.trim()) {
+        alert("Please enter Admin Email");
+        return;
+      }
+
+      if (!password) {
+        alert("Please enter Password");
         return;
       }
     }
@@ -54,19 +92,33 @@ function Login() {
       // STUDENT LOGIN
       // ==========================================
       if (role === "student") {
-        const response = await loginUser({
+        const loginData = {
           username: studentId.trim(),
           password,
-        });
+        };
 
+        // Debug - check exactly what is being sent
+        console.log("STUDENT LOGIN DATA:", loginData);
+
+        const response = await loginStudent(
+          loginData.username,
+          loginData.password
+        );
+
+        console.log("STUDENT LOGIN RESPONSE:", response);
+
+        // Check token
         if (!response?.token) {
-          throw new Error("Student login failed");
+          throw new Error("Student login failed. Token not received.");
         }
 
-        // Save authentication details
+        // ==========================================
+        // SAVE STUDENT AUTHENTICATION
+        // ==========================================
         localStorage.setItem("token", response.token);
         localStorage.setItem("role", "student");
 
+        // Save student information if returned
         if (response.student) {
           localStorage.setItem(
             "student",
@@ -74,27 +126,44 @@ function Login() {
           );
         }
 
-        // Go to student dashboard
-        navigate("/student-dashboard", { replace: true });
+        // ==========================================
+        // GO TO STUDENT DASHBOARD
+        // ==========================================
+        navigate("/student-dashboard", {
+          replace: true,
+        });
+
+        return;
       }
 
       // ==========================================
       // ADMIN LOGIN
       // ==========================================
-      else {
-        const response = await loginUser({
+      if (role === "admin") {
+        const loginData = {
           email: adminId.trim(),
-          password,
-        });
+          password: password,
+        };
 
+        // Debug - check exactly what is being sent
+        console.log("ADMIN LOGIN DATA:", loginData);
+
+        const response = await loginUser(loginData);
+
+        console.log("ADMIN LOGIN RESPONSE:", response);
+
+        // Check token
         if (!response?.token) {
-          throw new Error("Admin login failed");
+          throw new Error("Admin login failed. Token not received.");
         }
 
-        // Save authentication details
+        // ==========================================
+        // SAVE ADMIN AUTHENTICATION
+        // ==========================================
         localStorage.setItem("token", response.token);
         localStorage.setItem("role", "admin");
 
+        // Save admin/user information if returned
         if (response.user) {
           localStorage.setItem(
             "user",
@@ -102,16 +171,24 @@ function Login() {
           );
         }
 
-        // Go to admin dashboard
-        navigate("/admin-dashboard", { replace: true });
+        // ==========================================
+        // GO TO ADMIN DASHBOARD
+        // ==========================================
+        navigate("/admin-dashboard", {
+          replace: true,
+        });
       }
     } catch (error) {
-      console.error("Login error:", error);
+      console.error("LOGIN ERROR:", error);
 
+      // Get backend error message
       const message =
         error?.response?.data?.message ||
+        error?.response?.data?.error ||
         error?.message ||
         "Login failed. Please try again.";
+
+      console.error("SERVER ERROR:", error?.response?.data);
 
       alert(message);
     } finally {
@@ -119,8 +196,12 @@ function Login() {
     }
   };
 
+  // ==========================================
+  // UI
+  // ==========================================
   return (
     <div className="login-page">
+
       {/* ==========================================
           LEFT SIDE
       ========================================== */}
@@ -128,6 +209,7 @@ function Login() {
         <div className="overlay"></div>
 
         <div className="banner-content">
+
           <div className="welcome-section">
             <h1>
               Smart Hostel
@@ -142,6 +224,7 @@ function Login() {
           </div>
 
           <div className="features">
+
             <div className="feature-item">
               <span>✓</span>
               Secure Authentication
@@ -156,7 +239,9 @@ function Login() {
               <span>✓</span>
               Admin Control Panel
             </div>
+
           </div>
+
         </div>
       </div>
 
@@ -164,17 +249,26 @@ function Login() {
           RIGHT SIDE
       ========================================== */}
       <div className="login-container">
+
         <div className="login-box">
-          {/* HEADER */}
+
+          {/* ==========================================
+              HEADER
+          ========================================== */}
           <div className="login-header">
             <h2>Welcome Back</h2>
-            <p>Please login to access your account</p>
+
+            <p>
+              Please login to access your account
+            </p>
           </div>
 
           {/* ==========================================
               ROLE SELECTOR
           ========================================== */}
           <div className="role-selector">
+
+            {/* STUDENT BUTTON */}
             <button
               type="button"
               className={`role-btn ${
@@ -191,6 +285,7 @@ function Login() {
               </div>
             </button>
 
+            {/* ADMIN BUTTON */}
             <button
               type="button"
               className={`role-btn ${
@@ -206,18 +301,24 @@ function Login() {
                 <small>Administrator Login</small>
               </div>
             </button>
+
           </div>
 
           {/* ==========================================
               LOGIN FORM
           ========================================== */}
           <form onSubmit={handleLogin}>
-            {/* STUDENT */}
+
+            {/* ==========================================
+                STUDENT INPUT
+            ========================================== */}
             {role === "student" ? (
               <div className="input-group">
+
                 <label>Student ID</label>
 
                 <div className="input-wrapper">
+
                   <FaUserGraduate className="input-icon" />
 
                   <input
@@ -230,14 +331,21 @@ function Login() {
                     disabled={loading}
                     autoComplete="username"
                   />
+
                 </div>
+
               </div>
             ) : (
-              /* ADMIN */
+
+              /* ==========================================
+                 ADMIN INPUT
+              ========================================== */
               <div className="input-group">
+
                 <label>Admin Email</label>
 
                 <div className="input-wrapper">
+
                   <FaUserShield className="input-icon" />
 
                   <input
@@ -250,19 +358,29 @@ function Login() {
                     disabled={loading}
                     autoComplete="username"
                   />
+
                 </div>
+
               </div>
             )}
 
-            {/* PASSWORD */}
+            {/* ==========================================
+                PASSWORD
+            ========================================== */}
             <div className="input-group">
+
               <label>Password</label>
 
               <div className="input-wrapper">
+
                 <FaLock className="input-icon" />
 
                 <input
-                  type={showPassword ? "text" : "password"}
+                  type={
+                    showPassword
+                      ? "text"
+                      : "password"
+                  }
                   placeholder="Enter your password"
                   value={password}
                   onChange={(e) =>
@@ -291,23 +409,37 @@ function Login() {
                     <FaEye />
                   )}
                 </button>
+
               </div>
+
             </div>
 
-            {/* REMEMBER ME */}
+            {/* ==========================================
+                REMEMBER ME
+            ========================================== */}
             <div className="login-options">
+
               <label className="remember">
-                <input type="checkbox" />
+
+                <input
+                  type="checkbox"
+                />
+
                 Remember me
+
               </label>
+
             </div>
 
-            {/* LOGIN BUTTON */}
+            {/* ==========================================
+                LOGIN BUTTON
+            ========================================== */}
             <button
               type="submit"
               className="login-btn"
               disabled={loading}
             >
+
               <FaSignInAlt />
 
               {loading
@@ -316,16 +448,24 @@ function Login() {
                     role === "student"
                       ? "Student"
                       : "Admin"
-                  }`}
+                  }`
+              }
+
             </button>
+
           </form>
 
-          {/* SECURITY */}
+          {/* ==========================================
+              SECURITY MESSAGE
+          ========================================== */}
           <div className="security-note">
             🔒 Your account is protected with secure authentication
           </div>
+
         </div>
+
       </div>
+
     </div>
   );
 }

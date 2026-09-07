@@ -23,7 +23,7 @@ import "../styles/AdminDashboard.css";
 // API
 // ======================================================
 
-const API_BASE_URL = "http://localhost:5000/api";
+const API_BASE_URL = "/api";
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -235,9 +235,10 @@ function AdminDashboard() {
     } catch (error) {
       console.error("Failed to load admin data:", error);
 
-      if (error?.response?.status === 401) {
+      if (error?.response?.status === 401 || error?.response?.status === 403) {
         localStorage.removeItem("token");
         localStorage.removeItem("role");
+        localStorage.removeItem("user");
         navigate("/", { replace: true });
         return;
       }
@@ -310,7 +311,6 @@ function AdminDashboard() {
         !studentForm.username ||
         !studentForm.name ||
         !studentForm.rollNo ||
-        !studentForm.bedNumber ||
         !studentForm.course ||
         !studentForm.email ||
         !studentForm.phone

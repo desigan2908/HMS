@@ -514,6 +514,30 @@
   border-color: #2f80ed;
 }
 
+.complaint-form-card input {
+  width: 100%;
+  border: 1px solid #d0d5dd;
+  border-radius: 8px;
+  padding: 12px 15px;
+  outline: none;
+  font-family: inherit;
+  margin-bottom: 15px;
+  font-size: 14px;
+}
+
+.complaint-form-card input:focus {
+  border-color: #2f80ed;
+}
+
+.complaint-admin-reply {
+  margin-top: 10px;
+  padding: 10px 14px;
+  background: #f0fdf4;
+  border-left: 3px solid #22c55e;
+  border-radius: 4px;
+  font-size: 13px;
+  color: #166534;
+}
 
 .submit-complaint-btn {
   margin-top: 15px;

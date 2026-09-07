@@ -24,7 +24,6 @@ const createStudent = async (req, res) => {
       !password ||
       !name ||
       !rollNo ||
-      !bedNumber ||
       !course ||
       !email ||
       !phone
@@ -61,7 +60,7 @@ const createStudent = async (req, res) => {
       password: hashedPassword,
       name,
       rollNo,
-      bedNumber,
+      bedNumber: bedNumber ? bedNumber.trim() : "",
       course,
       email,
       phone,

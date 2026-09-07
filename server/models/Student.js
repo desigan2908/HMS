@@ -29,7 +29,8 @@ const studentSchema = new mongoose.Schema(
 
     bedNumber: {
       type: String,
-      required: true,
+      required: false,
+      default: "",
       trim: true
     },
 
